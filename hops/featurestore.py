@@ -2517,7 +2517,7 @@ def get_training_dataset_tf(training_dataset, dataset_format,
         tf_record_schema = get_training_dataset_tf_record_schema(training_dataset, training_dataset_version,
                                                                  featurestore)
 
-        if feature_names is not None:
+        if feature_names is None:
            feature_names = list(tf_record_schema.keys())
            feature_names.remove(label_name)
 
@@ -2568,15 +2568,18 @@ def get_training_dataset_tf(training_dataset, dataset_format,
         with make_reader(dataset_dir, num_epochs=None, hdfs_driver='libhdfs',
                          workers_count=1, shuffle_row_groups=False) as reader:
             dataset = make_petastorm_dataset(reader)
+            if feature_names is  None:
+                #feature_names = [feature[0] for feature in sample.items()]
+                feature_names = get_training_dataset(training_dataset).columns
+                feature_names.remove(label_name)
+
             def _row_mapper(sample):
                 out_dict = dict()
-                if feature_names is  None:
-                    feature_names = [feature[0] for feature in sample.items()]
-                    feature_names.remove(label_name)
+
                 for feature in feature_names:
-                    try:
+                    if hasattr(sample, feature):
                         out_dict[feature] = getattr(sample, feature)
-                    except NameError:
+                    else:
                         print ("{} is not known".format(feature))
 
                 label = getattr(sample, label_name)
