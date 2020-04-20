@@ -2565,7 +2565,7 @@ def get_training_dataset_tf(training_dataset, feature_names, label_name, dataset
                 for feature in feature_names:
                     out_dict[feature] = getattr(sample, feature)
 
-                label = getattr(row, label_name)
+                label = getattr(sample, label_name)
 
                 return out_dict, label
 
@@ -2581,8 +2581,6 @@ def get_training_dataset_tf(training_dataset, feature_names, label_name, dataset
     dataset = dataset.repeat() #num_epochs * steps_per_epoch
     dataset = dataset.cache()
     dataset = dataset.shuffle(num_epochs * batch_size)
-    if dataset_format == "petastorm":
-        dataset = dataset.apply(tf.data.experimental.unbatch())
     dataset = dataset.batch(batch_size)
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
