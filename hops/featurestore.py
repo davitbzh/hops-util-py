@@ -2498,7 +2498,8 @@ def get_training_dataset_tf(training_dataset, feature_names, label_name, dataset
 
     dataset_dir = get_training_dataset_path(training_dataset, featurestore, training_dataset_version)
 
-    feature_names = list(filter(lambda x : x != 'team_position', feature_names))
+    # Make sure that label_name is not included in the feature_names array
+    feature_names = list(filter(lambda x : x != label_name, feature_names))
 
     if dataset_format == "tfrecords":
         input_files = tf.io.gfile.glob(dataset_dir + "/part-r-*")
@@ -2516,7 +2517,7 @@ def get_training_dataset_tf(training_dataset, feature_names, label_name, dataset
         dataset = dataset.map(_decode)
 
     elif dataset_format == "csv":
-        input_files = tf.io.gfile.glob(dataset_dir + "*csv")
+        input_files = tf.io.gfile.glob(dataset_dir + "/*csv")
 
         # We need to get schema for csv data because if we let tensorflow to infer the column names from the first row
         # of the records and if this record is empty then it will throw "Empty file?" exception. Setting ignore_errors
