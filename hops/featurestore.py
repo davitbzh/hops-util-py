@@ -2505,7 +2505,7 @@ def get_training_dataset_tf(training_dataset, feature_names, label_name, dataset
                                                                  featurestore)
 
         def _decode(sample):
-            example = tf.parse_single_example(sample, tf_record_schema)
+            example = tf.io.parse_single_example(sample, tf_record_schema)
             x = []
             for feature_name in feature_names:
                 x.append(example[feature_name])
