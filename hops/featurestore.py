@@ -2455,3 +2455,124 @@ def remove_metadata(featuregroup_name, keys, featuregroup_version=1, featurestor
 
     for k in keys:
         core._do_remove_metadata(featuregroup_name, k, featurestore, featuregroup_version)
+
+
+def get_training_dataset_tf(training_dataset, feature_names, label_name, dataset_format,
+                            batch_size, num_epochs, one_hot_encode_labels=False,
+                            num_classes=None, shuffle_buffer_size=10000,
+                            featurestore=None, training_dataset_version=1):
+
+    """
+    Gets the HDFS path to a training dataset with a specific name and version in a featurestore
+    Example usage:
+    >>> featurestore.get_training_dataset_tf("AML_dataset")
+    >>> # This function 1st will call get_training_dataset_path function which by default will look for the
+    >>> # training dataset in the project's featurestore and use version 1, but this can be overriden if required:
+    >>> featurestore.get_training_dataset_tf("AML_dataset",  featurestore=featurestore.project_featurestore(),
+    >>>                                        training_dataset_version=2)
+    Args:
+        :feature_names: an array of feature names
+        :label_name: name of the target variable in the dataset
+        :training_dataset: name of the training dataset
+        :dataset_format
+        :batch_size
+        :num_epochs
+        :one_hot_encode_labels
+        :num_classes=None
+        :shuffle_buffer_size
+        :featurestore: featurestore that the training dataset is linked to
+        :training_dataset_version: version of the training dataset
+    Returns:
+        The HDFS path to the training dataset
+    """
+
+    import tensorflow as tf
+    from petastorm import make_reader
+    from petastorm.tf_utils import tf_tensors, make_petastorm_dataset
+
+    if one_hot_encode_labels and num_classes is None:
+        raise ValueError("if one_hot_encode_labels is True you also need to provide num_classes")
+
+    def _preprocess(features, label):
+        return features,  tf.one_hot(label, num_classes)
+
+    dataset_dir = get_training_dataset_path(training_dataset, featurestore, training_dataset_version)
+
+    if dataset_format == "tfrecords":
+        input_files = tf.io.gfile.glob(dataset_dir + "/part-r-*")
+        dataset = tf.data.TFRecordDataset(input_files)
+        tf_record_schema = get_training_dataset_tf_record_schema(training_dataset)
+
+        def _decode(sample):
+            example = tf.parse_single_example(sample, tf_record_schema)
+            x = []
+            for feature_name in feature_names:
+                x.append(example[feature_name])
+            y = [tf.cast(example[label_name], tf.float32)]
+            return x,y
+        dataset = dataset.map(_decode)
+
+    elif dataset_format == "csv":
+        input_files = tf.io.gfile.glob(dataset_dir + "*csv")
+
+        # We need to get schema for csv data because if we let tensorflow to infer the column names from the first row
+        # of the records and if this record is empty then it will throw "Empty file?" exception. Setting ignore_errors
+        # to True is supposed to fix this please see here:
+        # https://www.tensorflow.org/api_docs/python/tf/data/experimental/make_csv_dataset
+        # but unofortunatelly its not the case
+        column_names = get_training_dataset(training_dataset).columns
+
+        dataset = tf.data.experimental.make_csv_dataset(
+            file_pattern=input_files,
+            batch_size=batch_size,
+            column_names=column_names, # label name must be included in feature names also
+            column_defaults=None, # TODO: WIll be better if we provide what types of values each column have from shcema
+            label_name=label_name,
+            select_columns=feature_names,
+            field_delim=',',
+            use_quote_delim=True,
+            na_value='',
+            header=True,
+            num_epochs=None,
+            shuffle=True,
+            shuffle_buffer_size=shuffle_buffer_size,
+            shuffle_seed=None,
+            prefetch_buffer_size=None,
+            num_parallel_reads=None,
+            sloppy=False,
+            num_rows_for_inference=100,
+            compression_type=None,
+            ignore_errors=False
+        )
+
+    elif dataset_format == "petastorm":
+        with make_reader(dataset_dir, num_epochs=None, hdfs_driver='libhdfs',
+                         workers_count=1, shuffle_row_groups=False) as reader:
+            dataset = make_petastorm_dataset(reader)
+            def _row_mapper(sample):
+                out_dict = dict()
+                for feature in feature_names:
+                    out_dict[feature] = getattr(sample, feature)
+
+                label = getattr(row, label_name)
+
+                return out_dict, label
+
+            dataset = dataset.map(_row_mapper)
+
+    else:
+        raise ValueError("{} format is not supported by get_training_dataset_tf function".format(dataset_format))
+
+    if one_hot_encode_labels:
+        dataset = dataset.map(_preprocess)
+
+    # tf data optimization
+    dataset = dataset.repeat() #num_epochs * steps_per_epoch
+    dataset = dataset.cache()
+    dataset = dataset.shuffle(num_epochs * batch_size)
+    if dataset_format == "petastorm":
+        dataset = dataset.apply(tf.data.experimental.unbatch())
+    dataset = dataset.batch(batch_size)
+    dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+
+    return dataset

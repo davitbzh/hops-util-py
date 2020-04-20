@@ -101,14 +101,14 @@ def _get_dataframe_tf_record_schema_json(spark_df, fixed=True):
     example_json = {}
     for col in spark_df.dtypes:
         if col[1] in constants.FEATURE_STORE.TF_RECORD_INT_SPARK_TYPES:
-            example[str(col[0])] = tf.FixedLenFeature([], tf.int64)
+            example[str(col[0])] = tf.io.FixedLenFeature([], tf.int64)
             example_json[str(col[0])] = {
                 constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE:
                     constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE_FIXED,
                 constants.FEATURE_STORE.TF_RECORD_SCHEMA_TYPE: constants.FEATURE_STORE.TF_RECORD_INT_TYPE}
-            tf.FixedLenFeature([], tf.int64)
+            tf.io.FixedLenFeature([], tf.int64)
         if col[1] in constants.FEATURE_STORE.TF_RECORD_FLOAT_SPARK_TYPES:
-            example[str(col[0])] = tf.FixedLenFeature([], tf.float32)
+            example[str(col[0])] = tf.io.FixedLenFeature([], tf.float32)
             example_json[str(col[0])] = {
                 constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE:
                     constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE_FIXED,
@@ -116,7 +116,7 @@ def _get_dataframe_tf_record_schema_json(spark_df, fixed=True):
         if col[1] in constants.FEATURE_STORE.TF_RECORD_INT_ARRAY_SPARK_TYPES:
             if fixed:
                 array_len = _get_spark_array_size(spark_df, str(col[0]))
-                example[str(col[0])] = tf.FixedLenFeature(shape=[array_len], dtype=tf.int64)
+                example[str(col[0])] = tf.io.FixedLenFeature(shape=[array_len], dtype=tf.int64)
                 example_json[str(col[0])] = {
                     constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE:
                         constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE_FIXED,
@@ -132,7 +132,7 @@ def _get_dataframe_tf_record_schema_json(spark_df, fixed=True):
         if col[1] in constants.FEATURE_STORE.TF_RECORD_FLOAT_ARRAY_SPARK_TYPES:
             if fixed:
                 array_len = _get_spark_array_size(spark_df, str(col[0]))
-                example[str(col[0])] = tf.FixedLenFeature(shape=[array_len], dtype=tf.float32)
+                example[str(col[0])] = tf.io.FixedLenFeature(shape=[array_len], dtype=tf.float32)
                 example_json[str(col[0])] = {
                     constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE:
                         constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE_FIXED,
@@ -140,14 +140,14 @@ def _get_dataframe_tf_record_schema_json(spark_df, fixed=True):
                     constants.FEATURE_STORE.TF_RECORD_SCHEMA_SHAPE: [array_len]
                 }
             else:
-                example[str(col[0])] = tf.VarLenFeature(tf.float32)
+                example[str(col[0])] = tf.io.VarLenFeature(tf.float32)
                 example_json[str(col[0])] = {
                     constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE:
                         constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE_VAR,
                     constants.FEATURE_STORE.TF_RECORD_SCHEMA_TYPE: constants.FEATURE_STORE.TF_RECORD_FLOAT_TYPE}
         if col[1] in constants.FEATURE_STORE.TF_RECORD_STRING_ARRAY_SPARK_TYPES or col[
             1] in constants.FEATURE_STORE.TF_RECORD_STRING_SPARK_TYPES:
-            example[str(col[0])] = tf.VarLenFeature(tf.string)
+            example[str(col[0])] = tf.io.VarLenFeature(tf.string)
             example_json[str(col[0])] = {
                 constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE: constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE_VAR,
                 constants.FEATURE_STORE.TF_RECORD_SCHEMA_TYPE: constants.FEATURE_STORE.TF_RECORD_STRING_TYPE}
@@ -176,20 +176,20 @@ def _convert_tf_record_schema_json_to_dict(tf_record_json_schema):
                 constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE_FIXED \
                 and value[constants.FEATURE_STORE.TF_RECORD_SCHEMA_TYPE] == constants.FEATURE_STORE.TF_RECORD_INT_TYPE:
             if constants.FEATURE_STORE.TF_RECORD_SCHEMA_SHAPE in value:
-                example[str(key)] = tf.FixedLenFeature(shape=value[constants.FEATURE_STORE.TF_RECORD_SCHEMA_SHAPE],
+                example[str(key)] = tf.io.FixedLenFeature(shape=value[constants.FEATURE_STORE.TF_RECORD_SCHEMA_SHAPE],
                                                        dtype=tf.int64)
             else:
-                example[str(key)] = tf.FixedLenFeature([], tf.int64)
+                example[str(key)] = tf.io.FixedLenFeature([], tf.int64)
         if value[
             constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE] == \
                 constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE_FIXED and \
                         value[constants.FEATURE_STORE.TF_RECORD_SCHEMA_TYPE] == \
                         constants.FEATURE_STORE.TF_RECORD_FLOAT_TYPE:
             if constants.FEATURE_STORE.TF_RECORD_SCHEMA_SHAPE in value:
-                example[str(key)] = tf.FixedLenFeature(shape=value[constants.FEATURE_STORE.TF_RECORD_SCHEMA_SHAPE],
+                example[str(key)] = tf.io.FixedLenFeature(shape=value[constants.FEATURE_STORE.TF_RECORD_SCHEMA_SHAPE],
                                                        dtype=tf.float32)
             else:
-                example[str(key)] = tf.FixedLenFeature([], tf.float32)
+                example[str(key)] = tf.io.FixedLenFeature([], tf.float32)
         if value[
             constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE] == \
                 constants.FEATURE_STORE.TF_RECORD_SCHEMA_FEATURE_VAR and \
