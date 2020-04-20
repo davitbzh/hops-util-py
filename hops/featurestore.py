@@ -2498,8 +2498,15 @@ def get_training_dataset_tf(training_dataset, feature_names, label_name, dataset
 
     dataset_dir = get_training_dataset_path(training_dataset, featurestore, training_dataset_version)
 
-    # Make sure that label_name is not included in the feature_names array
-    feature_names = list(filter(lambda x : x != label_name, feature_names))
+    if dataset_format == "csv":
+        # Make sure that label_name is  included in the feature_names array if dataset_format is csv
+        if label_name not in feature_names:
+            feature_names.append(label_name)
+    else:
+        # Make sure that label_name is not included in the feature_names array
+        if label_name in feature_names:
+            feature_names.remove(label_name)
+
 
     if dataset_format == "tfrecords":
         input_files = tf.io.gfile.glob(dataset_dir + "/part-r-*")
@@ -2530,7 +2537,7 @@ def get_training_dataset_tf(training_dataset, feature_names, label_name, dataset
             file_pattern=input_files,
             batch_size=batch_size,
             column_names=column_names, # label name must be included in feature names also
-            column_defaults=None, # TODO: WIll be better if we provide what types of values each column have from shcema
+            column_defaults=None, # TODO: WIll be better if we provide what types of values each column have from schema
             label_name=label_name,
             select_columns=feature_names,
             field_delim=',',
