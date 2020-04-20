@@ -2501,7 +2501,8 @@ def get_training_dataset_tf(training_dataset, feature_names, label_name, dataset
     if dataset_format == "tfrecords":
         input_files = tf.io.gfile.glob(dataset_dir + "/part-r-*")
         dataset = tf.data.TFRecordDataset(input_files)
-        tf_record_schema = get_training_dataset_tf_record_schema(training_dataset)
+        tf_record_schema = get_training_dataset_tf_record_schema(training_dataset, training_dataset_version,
+                                                                 featurestore)
 
         def _decode(sample):
             example = tf.parse_single_example(sample, tf_record_schema)
