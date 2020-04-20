@@ -2457,29 +2457,31 @@ def remove_metadata(featuregroup_name, keys, featuregroup_version=1, featurestor
         core._do_remove_metadata(featuregroup_name, k, featurestore, featuregroup_version)
 
 
-def get_training_dataset_tf(training_dataset, feature_names, label_name, dataset_format,
-                            batch_size, num_epochs, one_hot_encode_labels=False,
+def get_training_dataset_tf(training_dataset, dataset_format,
+                            batch_size, num_epochs, label_name,
+                            feature_names = None,
+                            one_hot_encode_labels=False,
                             num_classes=None, shuffle_buffer_size=10000,
                             featurestore=None, training_dataset_version=1):
 
     """
     Gets the HDFS path to a training dataset with a specific name and version in a featurestore
     Example usage:
-    >>> featurestore.get_training_dataset_tf("AML_dataset")
+    >>> featurestore.get_training_dataset_tf("AML_dataset", "tfrecords", 32, 1, "target")
     >>> # This function 1st will call get_training_dataset_path function which by default will look for the
     >>> # training dataset in the project's featurestore and use version 1, but this can be overriden if required:
-    >>> featurestore.get_training_dataset_tf("AML_dataset",  featurestore=featurestore.project_featurestore(),
-    >>>                                        training_dataset_version=2)
+    >>> featurestore.get_training_dataset_tf("AML_dataset", "tfrecords", 32, 1, "target",
+    >>>                           featurestore=featurestore.project_featurestore(), training_dataset_version=2)
     Args:
-        :feature_names: an array of feature names
-        :label_name: name of the target variable in the dataset
-        :training_dataset: name of the training dataset
-        :dataset_format
-        :batch_size
-        :num_epochs
-        :one_hot_encode_labels
-        :num_classes=None
-        :shuffle_buffer_size
+        :training_dataset: name of dataset, Required
+        :dataset_format: dataset format, either tfrecors, csv or petastorn, Required
+        :batch_size: batch size, Required
+        :num_epochs : number of epochs, Required
+        :label_name: name of the target variable in the dataset, Required
+        feature_names: an array of feature names, Optional. will select all available features for training
+        :one_hot_encode_labels: weather to perform one hot encoding. Optional
+        :num_classes=None: number of classes to one hot encode. Required if one_hot_encode is True
+        :shuffle_buffer_size: Size of shuffle buffer size, Optional
         :featurestore: featurestore that the training dataset is linked to
         :training_dataset_version: version of the training dataset
     Returns:
@@ -2498,14 +2500,15 @@ def get_training_dataset_tf(training_dataset, feature_names, label_name, dataset
 
     dataset_dir = get_training_dataset_path(training_dataset, featurestore, training_dataset_version)
 
-    if dataset_format == "csv":
-        # Make sure that label_name is  included in the feature_names array if dataset_format is csv
-        if label_name not in feature_names:
-            feature_names.append(label_name)
-    else:
-        # Make sure that label_name is not included in the feature_names array
-        if label_name in feature_names:
-            feature_names.remove(label_name)
+    if feature_names is not None:
+        if  dataset_format == "csv":
+            # Make sure that label_name is  included in the feature_names array if dataset_format is csv
+            if label_name not in feature_names:
+                feature_names.append(label_name)
+        else:
+            # Make sure that label_name is not included in the feature_names array
+            if label_name in feature_names:
+                feature_names.remove(label_name)
 
 
     if dataset_format == "tfrecords":
@@ -2513,6 +2516,10 @@ def get_training_dataset_tf(training_dataset, feature_names, label_name, dataset
         dataset = tf.data.TFRecordDataset(input_files)
         tf_record_schema = get_training_dataset_tf_record_schema(training_dataset, training_dataset_version,
                                                                  featurestore)
+
+        if feature_names is not None:
+           feature_names = list(tf_record_schema.keys())
+           feature_names.remove(label_name)
 
         def _decode(sample):
             example = tf.io.parse_single_example(sample, tf_record_schema)
@@ -2557,13 +2564,20 @@ def get_training_dataset_tf(training_dataset, feature_names, label_name, dataset
         )
 
     elif dataset_format == "petastorm":
+
         with make_reader(dataset_dir, num_epochs=None, hdfs_driver='libhdfs',
                          workers_count=1, shuffle_row_groups=False) as reader:
             dataset = make_petastorm_dataset(reader)
             def _row_mapper(sample):
                 out_dict = dict()
+                if feature_names is  None:
+                    feature_names = [feature[0] for feature in sample.items()]
+                    feature_names.remove(label_name)
                 for feature in feature_names:
-                    out_dict[feature] = getattr(sample, feature)
+                    try:
+                        out_dict[feature] = getattr(sample, feature)
+                    except NameError:
+                        print ("{} is not known".format(feature))
 
                 label = getattr(sample, label_name)
 
