@@ -2498,6 +2498,8 @@ def get_training_dataset_tf(training_dataset, feature_names, label_name, dataset
 
     dataset_dir = get_training_dataset_path(training_dataset, featurestore, training_dataset_version)
 
+    feature_names = list(filter(lambda x : x != 'team_position', feature_names))
+
     if dataset_format == "tfrecords":
         input_files = tf.io.gfile.glob(dataset_dir + "/part-r-*")
         dataset = tf.data.TFRecordDataset(input_files)
