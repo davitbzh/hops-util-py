@@ -206,7 +206,8 @@ def _create_featuregroup_rest(featuregroup, featurestore_id, description, featur
                      constants.REST_CONFIG.JSON_FEATUREGROUP_DESCRIPTIVE_STATISTICS_ENABLED: featuregroup_desc_stats_enabled,
                      constants.REST_CONFIG.JSON_FEATUREGROUP_FEATURE_CORRELATION_ENABLED: feature_corr_enabled,
                      constants.REST_CONFIG.JSON_FEATUREGROUP_FEATURE_HISTOGRAM_ENABLED: features_histogram_enabled,
-                     constants.REST_CONFIG.JSON_FEATUREGROUP_STATISTIC_COLUMNS: stat_columns
+                     constants.REST_CONFIG.JSON_FEATUREGROUP_STATISTIC_COLUMNS: stat_columns,
+                     constants.REST_CONFIG.JSON_FEATUREGROUP_TIME_TRAVEL_FORMAT: "NONE"
                      }
     if featuregroup_type == "onDemandFeaturegroupDTO":
         json_contents[constants.REST_CONFIG.JSON_FEATUREGROUP_ON_DEMAND_QUERY] = sql_query

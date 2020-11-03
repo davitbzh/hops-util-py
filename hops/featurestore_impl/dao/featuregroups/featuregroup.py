@@ -36,11 +36,12 @@ class Featuregroup(FeaturestoreEntity):
         self.feat_hist_enabled = featuregroup_json[constants.REST_CONFIG.JSON_FEATUREGROUP_FEATURE_HISTOGRAM_ENABLED]
         self.stat_columns = featuregroup_json[constants.REST_CONFIG.JSON_FEATUREGROUP_STATISTIC_COLUMNS]
 
+        self.time_travel_format = featuregroup_json[constants.REST_CONFIG.JSON_FEATUREGROUP_TIME_TRAVEL_FORMAT]
+
         if(self.featuregroup_type == "onDemandFeaturegroupDTO"):
             self.on_demand_featuregroup = OnDemandFeaturegroup(featuregroup_json)
         if(self.featuregroup_type == "cachedFeaturegroupDTO"):
             self.cached_featuregroup = CachedFeaturegroup(featuregroup_json)
-
 
     def _parse_features(self, features_json):
         """
